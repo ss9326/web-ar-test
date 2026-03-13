@@ -1,0 +1,717 @@
+<html>
+
+<head>
+  <meta name="viewport"
+    content="width=device-width, initial-scale=1, maximum-scale=1, minimum-scale=1, orientation=portrait" />
+  <style>
+    html,
+    body {
+      margin: 0;
+      overflow: hidden;
+      min-height: 100%;
+      background:
+        radial-gradient(circle at top, rgba(209, 230, 255, 0.28), transparent 38%),
+        linear-gradient(180deg, #f6f8fc 0%, #dfe6f1 100%);
+      font-family: "Avenir Next", "Segoe UI", sans-serif;
+    }
+
+    #container {
+      width: 100%;
+      height: 100vh;
+      position: absolute;
+      overflow: hidden;
+    }
+
+    .video-canvas {
+      position: relative;
+      transform: rotateY(180deg);
+      z-index: 0.9;
+    }
+
+    #fps {
+      display: none;
+    }
+
+    .initial {
+      width: 100%;
+      height: 100%;
+      z-index: 100;
+      justify-content: center;
+      align-items: center;
+      display: flex;
+      font-size: 32px;
+      letter-spacing: 0.04em;
+      color: #16324f;
+      background: rgba(246, 248, 252, 0.92);
+      backdrop-filter: blur(10px);
+    }
+
+    .loading-bar {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 3px;
+      background: rgba(12, 23, 36, 0.1);
+      z-index: 1300;
+      overflow: hidden;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.2s ease;
+    }
+
+    .loading-bar.is-visible {
+      opacity: 1;
+    }
+
+    .loading-bar::after {
+      content: "";
+      position: absolute;
+      top: 0;
+      left: -35%;
+      width: 35%;
+      height: 100%;
+      background: linear-gradient(90deg, #2d8cff 0%, #7cc4ff 100%);
+      animation: loading-slide 1.05s ease-in-out infinite;
+    }
+
+    @keyframes loading-slide {
+      0% {
+        left: -35%;
+      }
+      100% {
+        left: 100%;
+      }
+    }
+
+    .face-straight,
+    .face-not-straight,
+    .face-aligned,
+    .face-not-aligned,
+    .frame-removal-loading,
+    .rotation {
+      display: none;
+    }
+
+    .glass-nav {
+      position: absolute;
+      left: 50%;
+      bottom: 20px;
+      transform: translateX(-50%);
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      z-index: 1000;
+      padding: 12px 14px;
+      border-radius: 24px;
+      background: rgba(12, 23, 36, 0.72);
+      box-shadow: 0 18px 50px rgba(10, 22, 37, 0.3);
+      backdrop-filter: blur(18px);
+    }
+
+    .nav-button {
+      min-width: 92px;
+      padding: 12px 16px;
+      border: 0;
+      border-radius: 16px;
+      background: linear-gradient(180deg, #ffffff 0%, #dce8f5 100%);
+      color: #0f2438;
+      font-size: 14px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      cursor: pointer;
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.8);
+    }
+
+    .sku-pill {
+      min-width: 168px;
+      padding: 12px 18px;
+      border-radius: 18px;
+      background: rgba(255, 255, 255, 0.14);
+      color: #f5f9ff;
+      text-align: center;
+    }
+
+    .size-controls {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      margin-bottom: 10px;
+    }
+
+    .size-button {
+      width: 28px;
+      height: 28px;
+      border: 0;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.18);
+      color: #f5f9ff;
+      font-size: 18px;
+      line-height: 1;
+      cursor: pointer;
+    }
+
+    .size-value {
+      min-width: 72px;
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .sku-caption {
+      display: block;
+      margin-bottom: 4px;
+      font-size: 11px;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      opacity: 0.7;
+    }
+
+    .sku-value {
+      display: block;
+      font-size: 18px;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+    }
+
+    .sku-meta {
+      display: block;
+      margin-top: 4px;
+      font-size: 12px;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      opacity: 0.68;
+    }
+
+    .asset-tools {
+      position: absolute;
+      top: 18px;
+      right: 18px;
+      z-index: 1000;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 12px;
+      border-radius: 18px;
+      background: rgba(12, 23, 36, 0.72);
+      box-shadow: 0 18px 50px rgba(10, 22, 37, 0.22);
+      backdrop-filter: blur(18px);
+    }
+
+    .asset-tools-label {
+      color: #f5f9ff;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      opacity: 0.74;
+    }
+
+    .tool-button {
+      border: 0;
+      border-radius: 14px;
+      padding: 10px 14px;
+      background: linear-gradient(180deg, #ffffff 0%, #dce8f5 100%);
+      color: #0f2438;
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      cursor: pointer;
+    }
+
+    .dropzone-target {
+      position: fixed;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(8, 17, 28, 0);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.2s ease, background-color 0.2s ease;
+      z-index: 1100;
+    }
+
+    .dropzone-target.is-dragover {
+      opacity: 1;
+      background: rgba(8, 17, 28, 0.45);
+    }
+
+    .dropzone-message {
+      padding: 18px 24px;
+      border: 2px dashed rgba(255, 255, 255, 0.9);
+      border-radius: 18px;
+      background: rgba(12, 23, 36, 0.82);
+      color: #f5f9ff;
+      font-size: 20px;
+      font-weight: 700;
+      letter-spacing: 0.03em;
+    }
+
+    .toast {
+      position: fixed;
+      left: 50%;
+      top: 24px;
+      transform: translateX(-50%) translateY(-10px);
+      padding: 10px 16px;
+      border-radius: 14px;
+      background: rgba(12, 23, 36, 0.92);
+      color: #f5f9ff;
+      font-size: 14px;
+      box-shadow: 0 14px 32px rgba(0, 0, 0, 0.22);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.2s ease, transform 0.2s ease;
+      z-index: 1200;
+    }
+
+    .toast.is-visible {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+    }
+
+    @media (max-width: 640px) {
+      .asset-tools {
+        left: 14px;
+        right: 14px;
+        top: 14px;
+        justify-content: space-between;
+        gap: 8px;
+      }
+
+      .asset-tools-label {
+        display: none;
+      }
+
+      .tool-button {
+        flex: 1;
+      }
+
+      .glass-nav {
+        width: calc(100% - 28px);
+        justify-content: space-between;
+        gap: 10px;
+      }
+
+      .nav-button {
+        min-width: 78px;
+        padding: 12px 10px;
+        font-size: 13px;
+      }
+
+      .sku-pill {
+        min-width: 0;
+        flex: 1;
+      }
+    }
+  </style>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/selfie_segmentation@0.1/selfie_segmentation.js" crossorigin="anonymous"></script>
+  <script type="module" async>
+    import { TryOn } from "https://res.cloudinary.com/diz2gdlfg/raw/upload/v1773316401/web-ar-tryon.es_pl21gr.js";
+
+    window.tryon = TryOn;
+    const queryString = window.location.search;
+
+    const urlParams = new URLSearchParams(queryString);
+
+    const initialSku = urlParams.get("sku");
+
+    const container = document.querySelector("#container");
+    const buttonNext = document.querySelector('.next-button');
+    const buttonPrev = document.querySelector('.prev-button');
+    const skuValue = document.querySelector('.sku-value');
+    const skuMeta = document.querySelector('.sku-meta');
+    const sizeValue = document.querySelector('.size-value');
+    const sizeMinusButton = document.querySelector('.size-minus-button');
+    const sizePlusButton = document.querySelector('.size-plus-button');
+    const browseGlbButton = document.querySelector('.browse-glb-button');
+    const urlGlbButton = document.querySelector('.url-glb-button');
+    const glbFileInput = document.querySelector('.glb-file-input');
+    const dropzoneTarget = document.querySelector('.dropzone-target');
+    const toast = document.querySelector('.toast');
+    const loadingBar = document.querySelector('.loading-bar');
+
+    let lenskartAr = new TryOn({
+      container,
+      filterMinCF: 0.00005,
+      filterBeta: 10,
+      loading: {
+        initLoading: loadingSetup,
+        start: startLoader,
+        stop: stopLoader,
+      },
+      isArReady: true,
+      frameRemoval: {
+        faceStraightUI: faceStraight,
+        faceNotStraightUI: faceNotStraight,
+        frameRemovalApiLoadingUI: frameRemovalLoading,
+        frameRemovalApiLoadingStopUI: frameRemovalLoadingStop,
+      },
+      faceStatus: function () {
+        let i = 0;
+      },
+      isShareImageSend: true,
+      faceStatusSharing: {
+        faceAligned: faceAligned,
+        faceNotAligned: faceNotAligned,
+      },
+    });
+
+    const urls = [
+      { obj: new URL('../glb/sku_206231.glb', import.meta.url).href },
+      { obj: new URL('../glb/sku_146458.glb', import.meta.url).href },
+      { obj: new URL('../glb/sku_151520.glb', import.meta.url).href },
+      { obj: new URL('../glb/sku_206827.glb', import.meta.url).href },
+      { obj: new URL('../glb/sku_211493.glb', import.meta.url).href },
+      { obj: new URL('../glb/sku_135380.glb', import.meta.url).href },
+      { obj: new URL('../glb/sku_210182.glb', import.meta.url).href },
+      { obj: new URL('../glb/sku_207370.glb', import.meta.url).href },
+      { obj: new URL('../glb/sku_215411.glb', import.meta.url).href },
+      { obj: new URL('../glb/sku_143910.glb', import.meta.url).href },
+      { obj: new URL('../glb/sku_146511.glb', import.meta.url).href },
+      { obj: new URL('../glb/sku_146981.glb', import.meta.url).href },
+      { obj: new URL('../glb/sku_136174.glb', import.meta.url).href },
+      { obj: new URL('../glb/sku_146526.glb', import.meta.url).href },
+    ];
+    let toastTimeout = null;
+
+    function getSkuLabel(path) {
+      const fileName = path.split('/').pop() || '';
+      return fileName.replace('.glb', '').replace('sku_', 'SKU ');
+    }
+
+    function showToast(message, duration = 3200) {
+      toast.textContent = message;
+      toast.classList.add('is-visible');
+      if (toastTimeout) {
+        clearTimeout(toastTimeout);
+      }
+      toastTimeout = setTimeout(() => {
+        toast.classList.remove('is-visible');
+      }, duration);
+    }
+
+    function extractAssetName(fileName) {
+      const clean = fileName.split('#')[0].split('?')[0];
+      const lower = clean.toLowerCase();
+      const glbIndex = lower.lastIndexOf('.glb');
+      const baseName = glbIndex === -1 ? clean : clean.slice(0, glbIndex);
+      const onlyName = baseName.split('/').pop() || baseName;
+      const skuIndex = onlyName.toLowerCase().lastIndexOf('sku_');
+      return skuIndex === -1 ? onlyName : onlyName.slice(skuIndex + 4);
+    }
+
+    function buildSkuGlbUrl(skuId) {
+      const encoded = encodeURIComponent(skuId.trim());
+      return `https://lookr-static.lenskart.com/frameassets/${encoded}/orignal/sku_${encoded}.glb`;
+    }
+
+    function isGlbFile(file) {
+      if (!file) return false;
+      const lowerName = file.name.toLowerCase();
+      return file.type === 'model/gltf-binary' || lowerName.endsWith('.glb');
+    }
+
+    function isValidGlbUrl(urlString) {
+      try {
+        const url = new URL(urlString, window.location.href);
+        return url.pathname.toLowerCase().endsWith('.glb');
+      } catch {
+        return false;
+      }
+    }
+
+    function cleanupRevokableAsset(asset) {
+      if (asset?.revokable) {
+        URL.revokeObjectURL(asset.obj);
+      }
+    }
+
+    function upsertAsset(asset) {
+      const existingIndex = urls.findIndex((entry) => entry.obj === asset.obj || entry.name === asset.name);
+      if (existingIndex >= 0) {
+        cleanupRevokableAsset(urls[existingIndex]);
+        urls[existingIndex] = asset;
+        return existingIndex;
+      }
+      urls.push(asset);
+      return urls.length - 1;
+    }
+
+    function updateSkuDisplay() {
+      skuValue.textContent = urls[current].name;
+      skuMeta.textContent = `${current + 1} / ${urls.length}`;
+    }
+
+    const minSize = 130;
+    const maxSize = 150;
+    let currentSize = 139;
+
+    function updateSizeDisplay() {
+      sizeValue.textContent = `${currentSize} mm`;
+    }
+
+    async function setCurrentAsset(index) {
+      current = index;
+      await lenskartAr.addGlasses(urls[current].obj);
+      updateSkuDisplay();
+    }
+
+    function addDroppedModels(fileList) {
+      const files = Array.from(fileList || []).filter(isGlbFile);
+      if (!files.length) {
+        showToast('Drop one or more .glb files.');
+        return null;
+      }
+
+      let firstIndex = null;
+      files.forEach((file) => {
+        const name = extractAssetName(file.name) || 'local-model';
+        const asset = {
+          obj: URL.createObjectURL(file),
+          name,
+          revokable: true,
+        };
+        const index = upsertAsset(asset);
+        if (firstIndex === null) {
+          firstIndex = index;
+        }
+      });
+      return firstIndex;
+    }
+
+    async function addGlbUrl(rawUrl) {
+      const trimmed = rawUrl.trim();
+      if (!trimmed) {
+        return null;
+      }
+      if (!isValidGlbUrl(trimmed)) {
+        showToast('Please enter a valid .glb URL.');
+        return null;
+      }
+
+      try {
+        const response = await fetch(trimmed, { mode: 'cors' });
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}`);
+        }
+        const blob = await response.blob();
+        const asset = {
+          obj: URL.createObjectURL(blob),
+          name: extractAssetName(trimmed) || 'remote-model',
+          revokable: true,
+        };
+        return upsertAsset(asset);
+      } catch (error) {
+        showToast('Unable to download the GLB. Use a CORS-enabled URL.');
+        return null;
+      }
+    }
+
+    let current = 0;
+    urls.forEach((asset) => {
+      if (!asset.name) {
+        asset.name = extractAssetName(asset.obj) || getSkuLabel(asset.obj).replace('SKU ', '');
+      }
+    });
+
+    async function init() {
+      if (initialSku && initialSku.trim()) {
+        const index = await addGlbUrl(buildSkuGlbUrl(initialSku));
+        if (index !== null) {
+          current = index;
+        }
+      }
+
+      lenskartAr.changeGlassesSize(currentSize);
+      updateSizeDisplay();
+      await setCurrentAsset(current);
+    }
+
+    buttonNext.addEventListener('click', async () => {
+      const nextIndex = current === urls.length - 1 ? 0 : current + 1;
+      await setCurrentAsset(nextIndex);
+    });
+    buttonPrev.addEventListener('click', async () => {
+      const nextIndex = current === 0 ? urls.length - 1 : current - 1;
+      await setCurrentAsset(nextIndex);
+    });
+
+    sizeMinusButton.addEventListener('click', () => {
+      currentSize = currentSize <= minSize ? maxSize : currentSize - 1;
+      lenskartAr.changeGlassesSize(currentSize);
+      updateSizeDisplay();
+    });
+
+    sizePlusButton.addEventListener('click', () => {
+      currentSize = currentSize >= maxSize ? minSize : currentSize + 1;
+      lenskartAr.changeGlassesSize(currentSize);
+      updateSizeDisplay();
+    });
+
+    browseGlbButton.addEventListener('click', () => {
+      glbFileInput.click();
+    });
+
+    glbFileInput.addEventListener('change', async (event) => {
+      const index = addDroppedModels(event.target.files);
+      glbFileInput.value = '';
+      if (index !== null) {
+        await setCurrentAsset(index);
+        showToast('GLB added to the list.');
+      }
+    });
+
+    urlGlbButton.addEventListener('click', async () => {
+      const input = prompt('Enter a .glb URL');
+      if (input == null) {
+        return;
+      }
+      const index = await addGlbUrl(input);
+      if (index !== null) {
+        await setCurrentAsset(index);
+        showToast('Remote GLB added to the list.');
+      }
+    });
+
+    let dragCounter = 0;
+
+    function showDropzone() {
+      dropzoneTarget.classList.add('is-dragover');
+    }
+
+    function hideDropzone() {
+      dropzoneTarget.classList.remove('is-dragover');
+    }
+
+    window.addEventListener('dragenter', (event) => {
+      event.preventDefault();
+      dragCounter += 1;
+      showDropzone();
+    });
+
+    window.addEventListener('dragover', (event) => {
+      event.preventDefault();
+    });
+
+    window.addEventListener('dragleave', (event) => {
+      event.preventDefault();
+      dragCounter = Math.max(0, dragCounter - 1);
+      if (dragCounter === 0) {
+        hideDropzone();
+      }
+    });
+
+    window.addEventListener('drop', async (event) => {
+      event.preventDefault();
+      dragCounter = 0;
+      hideDropzone();
+      const index = addDroppedModels(event.dataTransfer.files);
+      if (index !== null) {
+        await setCurrentAsset(index);
+        showToast('Dropped GLB added to the list.');
+      }
+    });
+
+    window.addEventListener('beforeunload', () => {
+      urls.forEach(cleanupRevokableAsset);
+    });
+
+    init().catch((error) => {
+      console.error('Failed to initialize tester app', error);
+      showToast('Failed to initialize tester app.');
+    });
+
+
+    function loadingSetup() {
+      const element = document.querySelector(".initial");
+      element.style.display = "none";
+    }
+
+    function startLoader() {
+      loadingBar.classList.add("is-visible");
+    }
+
+    function stopLoader() {
+      loadingBar.classList.remove("is-visible");
+    }
+
+    function faceStraight() {
+      const element = document.querySelector(".face-straight");
+      element.style.display = "block";
+      document.querySelector(".face-not-straight").style.display = "none";
+    }
+    function faceNotStraight() {
+      const element = document.querySelector(".face-not-straight");
+      element.style.display = "block";
+      document.querySelector(".face-straight").style.display = "none";
+    }
+    function faceAligned() {
+      const element = document.querySelector(".face-aligned");
+      element.style.display = "block";
+      document.querySelector(".face-not-aligned").style.display = "none";
+    }
+    function faceNotAligned() {
+      const element = document.querySelector(".face-not-aligned");
+      element.style.display = "block";
+      document.querySelector(".face-aligned").style.display = "none";
+    }
+
+    function frameRemovalLoading() {
+      const element = document.querySelector(".frame-removal-loading");
+      element.style.display = "block";
+
+      // set face straight and not straight to none
+      document.querySelector(".face-straight").style.display = "none";
+      document.querySelector(".face-not-straight").style.display = "none";
+    }
+
+    function frameRemovalLoadingStop() {
+      const element = document.querySelector(".frame-removal-loading");
+      element.style.display = "none";
+    }
+
+  </script>
+</head>
+
+<body>
+  <div class="initial">Loading Your Try On</div>
+  <div class="loading-bar"></div>
+  <div id="fps">0 FPS</div>
+  <div id="container"></div>
+  <div class="asset-tools">
+    <span class="asset-tools-label">Add GLB</span>
+    <button class="tool-button browse-glb-button" type="button">Browse</button>
+    <button class="tool-button url-glb-button" type="button">URL</button>
+    <input class="glb-file-input" type="file" accept=".glb,model/gltf-binary" hidden multiple>
+  </div>
+  <div class="rotation"></div>
+  <div class="face-straight">Your Face is Straight</div>
+  <div class="face-not-straight">Please Keep Your Face Straight</div>
+  <div class="frame-removal-loading">Frame Removal Loading UI</div>
+  <div class="face-aligned">Your Face is aligned</div>
+  <div class="face-not-aligned">Please Keep Your Face aligned</div>
+  <div class="dropzone-target">
+    <div class="dropzone-message">Drop GLB files here</div>
+  </div>
+  <div class="toast" role="status" aria-live="polite"></div>
+  <div class="glass-nav">
+    <button class="nav-button prev-button">Prev</button>
+    <div class="sku-pill">
+      <div class="size-controls">
+        <button class="size-button size-minus-button" type="button">-</button>
+        <span class="size-value">139 mm</span>
+        <button class="size-button size-plus-button" type="button">+</button>
+      </div>
+      <span class="sku-caption">Current SKU</span>
+      <span class="sku-value">SKU</span>
+      <span class="sku-meta">1 / 1</span>
+    </div>
+    <button class="nav-button next-button">Next</button>
+  </div>
+</body>
+
+</html>
